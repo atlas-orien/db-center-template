@@ -2,6 +2,12 @@
 
 这是一个给 AI 使用的 Rust 服务端业务模板。
 
+## License
+
+This project is open source under either the MIT License or the Apache License
+2.0, at your option. See [LICENSE](./LICENSE), [LICENSE-MIT](./LICENSE-MIT),
+and [LICENSE-APACHE](./LICENSE-APACHE).
+
 用户真正需要做的事情只有三步：
 
 1. 让 AI 先把环境跑起来并测试是否正常

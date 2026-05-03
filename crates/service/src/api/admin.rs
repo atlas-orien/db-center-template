@@ -30,6 +30,7 @@ const PERM_ROLES: &str = "access_control:roles";
 const PERM_ROLE_PERMISSIONS: &str = "access_control:role_permissions";
 
 pub struct AdminApi {
+    db: DbContext,
     admin_user_svc: AdminUserService,
     role_svc: RoleService,
     permission_svc: PermissionService,
@@ -41,6 +42,7 @@ pub struct AdminApi {
 impl AdminApi {
     pub fn new(db: DbContext) -> Self {
         Self {
+            db: db.clone(),
             admin_user_svc: AdminUserService::new(db.clone()),
             role_svc: RoleService::new(db.clone()),
             permission_svc: PermissionService::new(db.clone()),
@@ -170,8 +172,18 @@ impl AdminApi {
         self.ensure_admin_user_change_allowed(&access, user_id, "only root can delete root user")
             .await?;
         self.ensure_admin_user_exists(user_id).await?;
-        self.user_role_svc.delete_by_user_id(user_id).await?;
-        self.admin_user_svc.delete_by_user_id(user_id).await?;
+        let tx = self.db.begin().await?;
+        let result: BizResult<()> = async {
+            let user_role_svc = UserRoleService::new(tx.clone());
+            let admin_user_svc = AdminUserService::new(tx.clone());
+
+            user_role_svc.delete_by_user_id(user_id).await?;
+            admin_user_svc.delete_by_user_id(user_id).await?;
+
+            Ok(())
+        }
+        .await;
+        commit_or_rollback(tx, result).await?;
 
         Ok(())
     }
@@ -220,9 +232,20 @@ impl AdminApi {
             ));
         }
 
-        self.role_permission_svc.delete_by_role_id(role_id).await?;
-        self.user_role_svc.delete_by_role_id(role_id).await?;
-        self.role_svc.delete_by_id(role_id).await?;
+        let tx = self.db.begin().await?;
+        let result: BizResult<()> = async {
+            let role_permission_svc = RolePermissionService::new(tx.clone());
+            let user_role_svc = UserRoleService::new(tx.clone());
+            let role_svc = RoleService::new(tx.clone());
+
+            role_permission_svc.delete_by_role_id(role_id).await?;
+            user_role_svc.delete_by_role_id(role_id).await?;
+            role_svc.delete_by_id(role_id).await?;
+
+            Ok(())
+        }
+        .await;
+        commit_or_rollback(tx, result).await?;
 
         Ok(())
     }
@@ -306,12 +329,21 @@ impl AdminApi {
             ));
         }
 
-        self.user_role_svc.delete_by_user_id(user_id).await?;
-        for role_id in role_ids {
-            self.user_role_svc
-                .create(CreateUserRole { user_id, role_id })
-                .await?;
+        let tx = self.db.begin().await?;
+        let result: BizResult<()> = async {
+            let user_role_svc = UserRoleService::new(tx.clone());
+
+            user_role_svc.delete_by_user_id(user_id).await?;
+            for role_id in role_ids {
+                user_role_svc
+                    .create(CreateUserRole { user_id, role_id })
+                    .await?;
+            }
+
+            Ok(())
         }
+        .await;
+        commit_or_rollback(tx, result).await?;
 
         self.build_user_role_options(user_id, &access).await
     }
@@ -409,19 +441,27 @@ impl AdminApi {
             ));
         }
 
-        self.role_permission_svc
-            .delete_by_role_id(req.role_id)
-            .await?;
-        for permission_id in permission_ids {
-            self.role_permission_svc
-                .create(CreateRolePermission {
-                    role_id: req.role_id,
-                    permission_id,
-                })
-                .await?;
-        }
+        let role_id = req.role_id;
+        let tx = self.db.begin().await?;
+        let result: BizResult<()> = async {
+            let role_permission_svc = RolePermissionService::new(tx.clone());
 
-        self.build_role_permission_tree(req.role_id).await
+            role_permission_svc.delete_by_role_id(role_id).await?;
+            for permission_id in permission_ids {
+                role_permission_svc
+                    .create(CreateRolePermission {
+                        role_id,
+                        permission_id,
+                    })
+                    .await?;
+            }
+
+            Ok(())
+        }
+        .await;
+        commit_or_rollback(tx, result).await?;
+
+        self.build_role_permission_tree(role_id).await
     }
 
     pub async fn get_current_user_permissions(
@@ -841,4 +881,17 @@ impl AdminAccess {
 
 fn is_reserved_role_code(code: &str) -> bool {
     matches!(code, ROOT_ROLE_CODE | ADMIN_ROLE_CODE | SUPPORT_ROLE_CODE)
+}
+
+async fn commit_or_rollback<T>(tx: DbContext, result: BizResult<T>) -> BizResult<T> {
+    match result {
+        Ok(value) => {
+            tx.commit().await?;
+            Ok(value)
+        }
+        Err(err) => {
+            tx.rollback().await?;
+            Err(err)
+        }
+    }
 }

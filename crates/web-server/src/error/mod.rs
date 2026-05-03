@@ -1,7 +1,6 @@
 use axum::http::StatusCode;
 use db_core::error::{BIZ_INTERNAL_ERROR, BizError};
-use error_code::app as app_error;
-use error_code::admin as admin_error;
+use error_code::{admin as admin_error, app as app_error};
 use thiserror::Error;
 use toolcraft_axum_kit::{ApiError, CommonError};
 

@@ -10,6 +10,7 @@ version = "0.1.0"
 edition = "2024"
 description = "A clean, layered Rust application based on db-core-rs"
 authors = ["Atlas Form"]
+license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
 tokio = { version = "1" }
@@ -28,7 +29,7 @@ validator = { version = "0.20", features = ["derive"] }
 time = { version = "0.3", features = ["macros", "serde", "formatting", "parsing"] }
 async-trait = "0.1"
 uuid = { version = "1", features = ["serde", "v4"] }
-db-core = { package = "db-core-rs", version = "0.1" }
+db-core = { package = "db-core-rs", version = "0.1.4" }
 
 # individual crates
 repo = { path = "crates/repo" }

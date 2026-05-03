@@ -4,8 +4,7 @@ use db_core::{
     DbContext, PaginatedResponse,
     error::{BIZ_INTERNAL_ERROR, BizError, BizResult},
 };
-use error_code::app as app_error;
-use error_code::admin as admin_error;
+use error_code::{admin as admin_error, app as app_error};
 use repo::table::{
     app_permissions::{Permission, PermissionService},
     app_role_permissions::{CreateRolePermission, RolePermissionService},
@@ -36,6 +35,7 @@ const PERM_APP_ROLES: &str = "access_control:app_roles";
 const PERM_APP_ROLE_PERMISSIONS: &str = "access_control:app_role_permissions";
 
 pub struct AppApi {
+    db: DbContext,
     admin_api: AdminApi,
     app_user_svc: AppUserService,
     role_svc: RoleService,
@@ -47,6 +47,7 @@ pub struct AppApi {
 impl AppApi {
     pub fn new(db: DbContext) -> Self {
         Self {
+            db: db.clone(),
             admin_api: AdminApi::new(db.clone()),
             app_user_svc: AppUserService::new(db.clone()),
             role_svc: RoleService::new(db.clone()),
@@ -61,33 +62,11 @@ impl AppApi {
         req: RegisterAppUserRequest,
     ) -> BizResult<AppUserResponse> {
         let user_id = parse_user_id(&req.user_id)?;
-        let existing_user = self.app_user_svc.get_by_user_id(user_id).await?;
-        let app_user = if let Some(app_user) = existing_user {
-            app_user
-        } else {
-            match self
-                .app_user_svc
-                .create(CreateAppUser {
-                    user_id,
-                    display_id: req.display_id,
-                    display_name: req.display_name,
-                    remark: req.remark,
-                    status: AppUserStatus::Enabled,
-                })
-                .await
-            {
-                Ok(app_user) => app_user,
-                Err(err) => self
-                    .app_user_svc
-                    .get_by_user_id(user_id)
-                    .await?
-                    .ok_or(err)?,
-            }
-        };
-
-        if app_user.status == AppUserStatus::Enabled {
-            self.ensure_default_role_assigned(user_id).await?;
-        }
+        let tx = self.db.begin().await?;
+        let result = AppApi::new(tx.clone())
+            .register_app_user_in_tx(user_id, req)
+            .await;
+        let app_user = commit_or_rollback(tx, result).await?;
 
         let roles = self.list_roles_by_user_id(user_id).await?;
         Ok(Self::map_app_user(app_user, roles))
@@ -217,8 +196,18 @@ impl AppApi {
             .await?;
         let user_id = parse_user_id(&user_id)?;
         self.ensure_app_user_exists(user_id).await?;
-        self.user_role_svc.delete_by_user_id(user_id).await?;
-        self.app_user_svc.delete_by_user_id(user_id).await?;
+        let tx = self.db.begin().await?;
+        let result: BizResult<()> = async {
+            let user_role_svc = UserRoleService::new(tx.clone());
+            let app_user_svc = AppUserService::new(tx.clone());
+
+            user_role_svc.delete_by_user_id(user_id).await?;
+            app_user_svc.delete_by_user_id(user_id).await?;
+
+            Ok(())
+        }
+        .await;
+        commit_or_rollback(tx, result).await?;
 
         Ok(())
     }
@@ -268,9 +257,20 @@ impl AppApi {
                 "role code 'free' is reserved".to_string(),
             ));
         }
-        self.role_permission_svc.delete_by_role_id(role_id).await?;
-        self.user_role_svc.delete_by_role_id(role_id).await?;
-        self.role_svc.delete_by_id(role_id).await?;
+        let tx = self.db.begin().await?;
+        let result: BizResult<()> = async {
+            let role_permission_svc = RolePermissionService::new(tx.clone());
+            let user_role_svc = UserRoleService::new(tx.clone());
+            let role_svc = RoleService::new(tx.clone());
+
+            role_permission_svc.delete_by_role_id(role_id).await?;
+            user_role_svc.delete_by_role_id(role_id).await?;
+            role_svc.delete_by_id(role_id).await?;
+
+            Ok(())
+        }
+        .await;
+        commit_or_rollback(tx, result).await?;
 
         Ok(())
     }
@@ -310,12 +310,21 @@ impl AppApi {
             ));
         }
 
-        self.user_role_svc.delete_by_user_id(user_id).await?;
-        for role_id in role_ids {
-            self.user_role_svc
-                .create(CreateUserRole { user_id, role_id })
-                .await?;
+        let tx = self.db.begin().await?;
+        let result: BizResult<()> = async {
+            let user_role_svc = UserRoleService::new(tx.clone());
+
+            user_role_svc.delete_by_user_id(user_id).await?;
+            for role_id in role_ids {
+                user_role_svc
+                    .create(CreateUserRole { user_id, role_id })
+                    .await?;
+            }
+
+            Ok(())
         }
+        .await;
+        commit_or_rollback(tx, result).await?;
 
         self.build_user_role_options(user_id).await
     }
@@ -367,19 +376,27 @@ impl AppApi {
             ));
         }
 
-        self.role_permission_svc
-            .delete_by_role_id(req.role_id)
-            .await?;
-        for permission_id in permission_ids {
-            self.role_permission_svc
-                .create(CreateRolePermission {
-                    role_id: req.role_id,
-                    permission_id,
-                })
-                .await?;
-        }
+        let role_id = req.role_id;
+        let tx = self.db.begin().await?;
+        let result: BizResult<()> = async {
+            let role_permission_svc = RolePermissionService::new(tx.clone());
 
-        self.build_role_permission_tree(req.role_id).await
+            role_permission_svc.delete_by_role_id(role_id).await?;
+            for permission_id in permission_ids {
+                role_permission_svc
+                    .create(CreateRolePermission {
+                        role_id,
+                        permission_id,
+                    })
+                    .await?;
+            }
+
+            Ok(())
+        }
+        .await;
+        commit_or_rollback(tx, result).await?;
+
+        self.build_role_permission_tree(role_id).await
     }
 
     pub async fn get_current_user_permissions(
@@ -479,6 +496,42 @@ impl AppApi {
                 .await?
                 .ok_or(err),
         }
+    }
+
+    async fn register_app_user_in_tx(
+        &self,
+        user_id: Uuid,
+        req: RegisterAppUserRequest,
+    ) -> BizResult<AppUser> {
+        let existing_user = self.app_user_svc.get_by_user_id(user_id).await?;
+        let app_user = if let Some(app_user) = existing_user {
+            app_user
+        } else {
+            match self
+                .app_user_svc
+                .create(CreateAppUser {
+                    user_id,
+                    display_id: req.display_id,
+                    display_name: req.display_name,
+                    remark: req.remark,
+                    status: AppUserStatus::Enabled,
+                })
+                .await
+            {
+                Ok(app_user) => app_user,
+                Err(err) => self
+                    .app_user_svc
+                    .get_by_user_id(user_id)
+                    .await?
+                    .ok_or(err)?,
+            }
+        };
+
+        if app_user.status == AppUserStatus::Enabled {
+            self.ensure_default_role_assigned(user_id).await?;
+        }
+
+        Ok(app_user)
     }
 
     async fn ensure_app_user_exists(&self, user_id: Uuid) -> BizResult<AppUser> {
@@ -676,6 +729,19 @@ fn parse_optional_rfc3339(value: Option<String>) -> BizResult<Option<OffsetDateT
             })
         })
         .transpose()
+}
+
+async fn commit_or_rollback<T>(tx: DbContext, result: BizResult<T>) -> BizResult<T> {
+    match result {
+        Ok(value) => {
+            tx.commit().await?;
+            Ok(value)
+        }
+        Err(err) => {
+            tx.rollback().await?;
+            Err(err)
+        }
+    }
 }
 
 struct AppAccess {
