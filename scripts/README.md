@@ -1,116 +1,49 @@
-# 脚本说明
+# Legacy Scripts
 
-这些脚本主要是给 AI 和自动化流程使用的，不是给普通使用者直接操作的。
+The shell scripts in this directory are kept as compatibility references.
 
-目标只有一件事：
-
-把数据库相关动作拆成明确、可组合、可重复执行的独立命令。
-
-## 这套脚本能做什么
-
-1. 用 Docker 启动 PostgreSQL
-2. 初始化 `app` 数据库
-3. 单独执行 SeaORM 迁移命令
-4. 单独生成 entity，且不修改数据库
-5. 清空整个数据库，或者清空某一张表
-
-## 推荐入口
-
-优先使用项目根目录的 `Makefile`：
+Use `cargo xtask` for new work:
 
 ```bash
-make help
+cargo xtask --help
 ```
 
-## 数据库连接
+Why:
 
-脚本会先读取 `.env`，默认连接 `APP_DATABASE_URL`，也可以用 `DATABASE_URL` 临时覆盖。
+- `scripts/*.sh` require a Unix-like shell.
+- Windows users may not have Bash.
+- AI agents and CI should use one cross-platform command surface.
+- This Rust workspace already requires Cargo, so `cargo xtask` has no extra
+  runtime dependency.
 
-示例：
+## Mapping
 
-```bash
-./scripts/init_db.sh
-./scripts/migrate.sh status
-./scripts/generate_entity.sh
-```
+| Shell script | Replacement |
+| --- | --- |
+| `./scripts/init.sh` | `cargo xtask init` |
+| `./scripts/postgres.sh up` | `cargo xtask db up` |
+| `./scripts/postgres.sh status` | `cargo xtask db status` |
+| `./scripts/postgres.sh stop` | `cargo xtask db stop` |
+| `./scripts/postgres.sh rm` | `cargo xtask db rm` |
+| `./scripts/init_db.sh` | `cargo xtask db init` |
+| `./scripts/clear_db.sh` | `cargo xtask db clear` |
+| `./scripts/truncate_table.sh <table>` | `cargo xtask db truncate <table>` |
+| `./scripts/migrate.sh up` | `cargo xtask migrate up` |
+| `./scripts/migrate.sh down` | `cargo xtask migrate down` |
+| `./scripts/migrate.sh fresh` | `cargo xtask migrate fresh` |
+| `./scripts/migrate.sh refresh` | `cargo xtask migrate refresh` |
+| `./scripts/migrate.sh reset` | `cargo xtask migrate reset` |
+| `./scripts/migrate.sh status` | `cargo xtask migrate status` |
+| `./scripts/migrate.sh generate <name>` | `cargo xtask migrate generate <name>` |
+| `./scripts/generate_entity.sh` | `cargo xtask entity generate` |
+| `./scripts/fresh_db.sh` | `cargo xtask fresh-db` |
+| `./scripts/init_permissions.sh` | `cargo xtask init-permissions` |
+| `./scripts/init_app_permissions.sh` | `cargo xtask init-app-permissions` |
+| `./scripts/init_root.sh` | `cargo xtask init-root` |
 
-## 脚本列表
+## Notes
 
-### `postgres.sh`
+The legacy scripts still read `.env` and use `DB_CONTAINER_NAME`, whose default
+is `postgres`.
 
-管理 PostgreSQL Docker 容器。
-
-支持：
-
-```bash
-./scripts/postgres.sh up
-./scripts/postgres.sh status
-./scripts/postgres.sh stop
-./scripts/postgres.sh rm
-```
-
-### `init_db.sh`
-
-初始化数据库。
-
-它会根据 `.env` 或 `DATABASE_URL` 中的数据库名创建目标数据库。
-
-默认数据库名是：
-
-```text
-app
-```
-
-### `migrate.sh`
-
-直接包装 `sea-orm-cli migrate`。
-
-支持：
-
-```bash
-./scripts/migrate.sh up
-./scripts/migrate.sh down
-./scripts/migrate.sh fresh
-./scripts/migrate.sh refresh
-./scripts/migrate.sh reset
-./scripts/migrate.sh status
-./scripts/migrate.sh generate create_users
-```
-
-### `generate_entity.sh`
-
-根据当前数据库中的已有表结构生成 entity。
-
-注意：
-
-- 这个脚本不会修改数据库
-- 它要求数据库中已经有表
-
-### `clear_db.sh`
-
-清空整个数据库的 `public` schema。
-
-### `truncate_table.sh`
-
-清空指定表，并重置自增：
-
-```bash
-./scripts/truncate_table.sh your_table
-```
-
-### `fresh_db.sh`
-
-执行：
-
-1. `migrate refresh`
-2. `generate entity`
-
-适合在确认要重建数据库后使用。
-
-### `init_permissions.sh` / `init_app_permissions.sh` / `init_root.sh`
-
-`init_permissions.sh` 初始化 `admin_permissions` 和 `admin_menus`。
-
-`init_app_permissions.sh` 初始化 `app_permissions`。
-
-`init_root.sh` 初始化后台 root 角色和 root 用户绑定。
+Prefer updating `xtask` when adding new automation.

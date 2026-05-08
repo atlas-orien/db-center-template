@@ -50,6 +50,17 @@
 - 当前项目是否能正常启动
 - 管理端接口是否可测试
 
+本项目的自动化入口是 `cargo xtask`。不要优先调用 `scripts/*.sh`：
+
+```bash
+cargo xtask --help
+cargo xtask db up
+cargo xtask migrate up
+cargo xtask entity generate
+```
+
+`xtask` 是 Rust CLI，会通过 Cargo 自动编译，Windows、macOS 和 Linux 使用同一套命令。
+
 如果过程中出现报错，优先让 AI 自己排查和修复，不要立刻停下来等用户处理。
 
 你可以直接把下面这段话发给 AI：
