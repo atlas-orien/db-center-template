@@ -1,0 +1,16 @@
+[package]
+name = "xtask"
+version.workspace = true
+edition.workspace = true
+description = "Cross-platform project automation commands"
+authors.workspace = true
+publish = false
+
+[dependencies]
+anyhow = "1"
+base64 = "0.22"
+clap = { version = "4", features = ["derive"] }
+dotenvy.workspace = true
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+serde_json.workspace = true
+url = "2"

@@ -4,8 +4,7 @@ use db_core::{
     DbContext, PaginatedResponse,
     error::{BIZ_INTERNAL_ERROR, BizError, BizResult},
 };
-use error_code::app as app_error;
-use error_code::admin as admin_error;
+use error_code::{admin as admin_error, app as app_error};
 use repo::table::{
     app_permissions::{Permission, PermissionService},
     app_role_permissions::{CreateRolePermission, RolePermissionService},
