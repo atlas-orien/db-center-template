@@ -20,7 +20,7 @@ Why:
 
 | Shell script | Replacement |
 | --- | --- |
-| `./scripts/init.sh` | `cargo xtask init` |
+| `./scripts/init.sh` | `cargo xtask init-env` |
 | `./scripts/postgres.sh up` | `cargo xtask db up` |
 | `./scripts/postgres.sh status` | `cargo xtask db status` |
 | `./scripts/postgres.sh stop` | `cargo xtask db stop` |

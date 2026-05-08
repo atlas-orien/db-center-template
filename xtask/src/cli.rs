@@ -10,7 +10,9 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Initialize local project files such as .env.
+    /// Initialize local env and config files.
+    InitEnv,
+    /// Initialize local env and config files. Alias of init-env.
     Init,
     /// Manage PostgreSQL and database maintenance tasks.
     Db {

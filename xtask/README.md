@@ -44,7 +44,7 @@ PG_IMAGE=postgres:16
 初始化 `.env`：
 
 ```bash
-cargo xtask init
+cargo xtask init-env
 ```
 
 用 Docker 启动 PostgreSQL，并确保目标数据库存在：
@@ -91,10 +91,11 @@ cargo xtask migrate --help
 ### 项目初始化
 
 ```bash
-cargo xtask init
+cargo xtask init-env
 ```
 
-把 `.env.example` 复制为 `.env`。
+把 `.env.example` 复制为 `.env`，并把 `config/*-example.toml` 复制为对应的
+`config/*.toml`。
 
 ### 数据库
 
@@ -175,7 +176,7 @@ cargo xtask init-root
 
 | 旧命令 | 新命令 |
 | --- | --- |
-| `./scripts/init.sh` | `cargo xtask init` |
+| `./scripts/init.sh` | `cargo xtask init-env` |
 | `./scripts/postgres.sh up` | `cargo xtask db up` |
 | `./scripts/postgres.sh status` | `cargo xtask db status` |
 | `./scripts/postgres.sh stop` | `cargo xtask db stop` |

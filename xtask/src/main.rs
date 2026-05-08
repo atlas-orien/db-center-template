@@ -26,7 +26,7 @@ fn main() -> Result<()> {
 impl Cli {
     fn run(self) -> Result<()> {
         match self.command {
-            Command::Init => init::run(),
+            Command::Init | Command::InitEnv => init::run(),
             Command::Db { command } => command.run(),
             Command::Migrate { command } => command.run(),
             Command::Entity { command } => command.run(),
