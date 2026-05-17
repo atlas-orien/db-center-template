@@ -31,7 +31,7 @@ and [LICENSE-APACHE](./LICENSE-APACHE).
 5. 检查是否已经安装 Docker
 6. 如果没有，协助安装 Docker
 7. 用下面这个模板生成项目：
-   cargo generate --git https://github.com/atlas-form/db-center-template.git --name my-service
+   cargo generate --git https://github.com/atlas-orien/db-center-template.git --name my-service
 8. 进入项目目录
 9. 告诉我下一步该做什么
 
