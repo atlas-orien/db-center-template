@@ -27,12 +27,12 @@ pub fn run() -> Result<()> {
     let login_url = format!("{auth_base_url}/auth/session/login");
     let me_url = format!("{auth_base_url}/auth/user/me");
 
-    let identifier = prompt("请输入 root 账号（用户名或邮箱）: ")?;
+    let identifier = env_or_prompt("ROOT_IDENTIFIER", "请输入 root 账号（用户名或邮箱）: ")?;
     if identifier.is_empty() {
         bail!("错误：账号不能为空");
     }
 
-    let password = prompt_password("请输入 root 密码: ")?;
+    let password = env_or_prompt_password("ROOT_PASSWORD", "请输入 root 密码: ")?;
     if password.is_empty() {
         bail!("错误：密码不能为空");
     }
@@ -211,6 +211,20 @@ fn prompt(label: &str) -> Result<String> {
     let mut input = String::new();
     io::stdin().read_line(&mut input)?;
     Ok(input.trim().to_owned())
+}
+
+fn env_or_prompt(var_name: &str, label: &str) -> Result<String> {
+    match env::var(var_name) {
+        Ok(value) if !value.trim().is_empty() => Ok(value.trim().to_owned()),
+        _ => prompt(label),
+    }
+}
+
+fn env_or_prompt_password(var_name: &str, label: &str) -> Result<String> {
+    match env::var(var_name) {
+        Ok(value) if !value.trim().is_empty() => Ok(value.trim().to_owned()),
+        _ => prompt_password(label),
+    }
 }
 
 fn prompt_password(label: &str) -> Result<String> {
