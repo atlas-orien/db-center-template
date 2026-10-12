@@ -78,6 +78,14 @@ auth_user.user_id
 
 ## 三、AI 在实现业务时必须遵守的规则
 
+### 用户资料与文件访问契约
+
+Auth 用户资料的 `avatar` 是包含 `object_key` 的对象或 `null`，不是公开 URL。
+当前后端 `AuthUserResponse` 只消费 ID 和名称字段，Serde 忽略头像等未消费字段，
+无需为头像读取增加后端存储或接口。前端向 File Service 的 `/file/sign/access`
+提交 `bucket_id=avatar` 和 object key，由 File Service 按读取策略返回公开地址或私有签名地址。
+头像上传后向 Auth 保存 object key；S3 bucket、域名和凭据继续由 File Service 管理。
+
 ### 允许
 
 - 使用 JWT 中的 `user_id` 作为“当前登录用户”
