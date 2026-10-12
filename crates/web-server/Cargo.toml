@@ -21,12 +21,12 @@ validator.workspace = true
 thiserror.workspace = true
 time.workspace = true
 uuid.workspace = true
-async-stream = "0.3"
-futures-util = "0.3"
-axum = {version = "=0.8.9", features = ["macros", "multipart", "ws"]}
-toolcraft-axum-kit = {version = "0.2.10"}
-toolcraft-config= {version = "0.2.0"}
-toolcraft-jwt= {version = "0.3.6"}
-toolcraft-request= {version = "0.2.3"}
-toolcraft-utils= {version = "0.2.2"}
-model-gateway-rs = { version = "0.2.4" }
+async-stream.workspace = true
+futures-util.workspace = true
+axum.workspace = true
+toolcraft-axum-kit.workspace = true
+toolcraft-config.workspace = true
+toolcraft-jwt.workspace = true
+toolcraft-request.workspace = true
+toolcraft-utils.workspace = true
+model-gateway-rs.workspace = true

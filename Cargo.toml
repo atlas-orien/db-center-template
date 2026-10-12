@@ -14,7 +14,7 @@ authors = ["Atlas Form"]
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
-tokio = { version = "1" }
+tokio = { version = "1", features = ["macros", "rt", "rt-multi-thread"] }
 thiserror = "2.0"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3", features = [
@@ -31,6 +31,32 @@ time = { version = "0.3", features = ["macros", "serde", "formatting", "parsing"
 async-trait = "0.1"
 uuid = { version = "1", features = ["serde", "v4"] }
 db-core = { package = "db-core-rs", version = "0.1.4" }
+sea-orm = { version = "2.0.0-rc", features = [
+    "sqlx-postgres",
+    "runtime-tokio-rustls",
+    "macros",
+    "with-uuid",
+] }
+sea-orm-migration = { version = "~2.0.0-rc.19", features = [
+    "runtime-tokio-rustls",
+    "sqlx-postgres",
+    "with-time",
+    "with-uuid",
+] }
+async-stream = "0.3"
+futures-util = "0.3"
+axum = { version = "=0.8.9", features = ["macros", "multipart", "ws"] }
+toolcraft-axum-kit = "0.2.10"
+toolcraft-config = "0.2.0"
+toolcraft-jwt = "0.3.6"
+toolcraft-request = "0.2.3"
+toolcraft-utils = "0.2.2"
+model-gateway-rs = "0.2.4"
+anyhow = "1"
+base64 = "0.22"
+clap = { version = "4", features = ["derive"] }
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+url = "2"
 
 # individual crates
 repo = { path = "crates/repo" }
